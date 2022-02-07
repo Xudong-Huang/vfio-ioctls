@@ -14,6 +14,7 @@ features = ["kvm"]
 
 [features]
 default = ["kvm"]
+noiommu = []
 kvm = ["kvm-ioctls", "kvm-bindings"]
 mshv = ["mshv-ioctls", "mshv-bindings"]
 
