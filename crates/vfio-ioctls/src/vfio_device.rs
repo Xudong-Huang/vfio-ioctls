@@ -455,7 +455,10 @@ pub struct VfioGroup {
 impl VfioGroup {
     #[cfg(not(test))]
     fn open_group_file(id: u32) -> Result<File> {
+        #[cfg(not(feature = "noiommu"))]
         let group_path = Path::new("/dev/vfio").join(id.to_string());
+        #[cfg(feature = "noiommu")]
+        let group_path = Path::new("/dev/vfio").join(String::from("noiommu-") + &id.to_string());
         OpenOptions::new()
             .read(true)
             .write(true)
