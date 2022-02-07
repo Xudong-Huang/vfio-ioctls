@@ -1195,7 +1195,7 @@ impl VfioDevice {
         }
     }
 
-    /// Return the maximum numner of interrupts a VFIO device can request.
+    /// Return the maximum number of interrupts a VFIO device can request.
     pub fn max_interrupts(&self) -> u32 {
         let mut max_interrupts = 0;
         let irq_indexes = vec![
