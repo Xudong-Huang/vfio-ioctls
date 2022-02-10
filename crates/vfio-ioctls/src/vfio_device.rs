@@ -143,7 +143,7 @@ impl VfioContainer {
 
         // Initialize the IOMMU backend driver after binding the first group object.
         if hash.len() == 0 {
-            if let Err(e) = self.set_iommu(VFIO_TYPE1v2_IOMMU) {
+            if let Err(e) = self.set_iommu(VFIO_TYPE1_IOMMU) {
                 let _ = vfio_syscall::unset_group_container(&*group, self);
                 return Err(e);
             }
