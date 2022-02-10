@@ -95,7 +95,7 @@ impl VfioContainer {
             groups: Mutex::new(HashMap::new()),
         };
         container.check_api_version()?;
-        container.check_extension(VFIO_TYPE1v2_IOMMU)?;
+        container.check_extension(VFIO_NOIOMMU_IOMMU)?;
 
         Ok(container)
     }
@@ -109,7 +109,7 @@ impl VfioContainer {
     }
 
     fn check_extension(&self, val: u32) -> Result<()> {
-        if val != VFIO_TYPE1_IOMMU && val != VFIO_TYPE1v2_IOMMU {
+        if val != VFIO_TYPE1_IOMMU && val != VFIO_TYPE1v2_IOMMU && val != VFIO_NOIOMMU_IOMMU {
             return Err(VfioError::VfioInvalidType);
         }
 
@@ -122,7 +122,7 @@ impl VfioContainer {
     }
 
     fn set_iommu(&self, val: u32) -> Result<()> {
-        if val != VFIO_TYPE1_IOMMU && val != VFIO_TYPE1v2_IOMMU {
+        if val != VFIO_TYPE1_IOMMU && val != VFIO_TYPE1v2_IOMMU && val != VFIO_NOIOMMU_IOMMU {
             return Err(VfioError::VfioInvalidType);
         }
 
@@ -143,7 +143,7 @@ impl VfioContainer {
 
         // Initialize the IOMMU backend driver after binding the first group object.
         if hash.len() == 0 {
-            if let Err(e) = self.set_iommu(VFIO_TYPE1_IOMMU) {
+            if let Err(e) = self.set_iommu(VFIO_NOIOMMU_IOMMU) {
                 let _ = vfio_syscall::unset_group_container(&*group, self);
                 return Err(e);
             }
