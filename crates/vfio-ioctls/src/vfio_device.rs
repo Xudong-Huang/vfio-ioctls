@@ -789,7 +789,7 @@ impl VfioDeviceInfo {
             };
 
             if vfio_syscall::get_device_region_info(self, &mut reg_info).is_err() {
-                error!("Could not get region #{} info", i);
+                warn!("Could not get region #{} info", i);
                 continue;
             }
 
