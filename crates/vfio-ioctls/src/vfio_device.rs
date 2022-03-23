@@ -776,6 +776,14 @@ impl VfioDevice {
         }
     }
 
+    /// VFIO pci hot reset only if the device supports being reset.
+    pub fn pci_hot_reset(&self) {
+        if vfio_syscall::pci_hot_reset(self) != 0 {
+            let err = std::io::Error::last_os_error();
+            error!("vfio pci hot reset failed. err={}", err);
+        }
+    }
+
     /// Get information about VFIO IRQs.
     ///
     /// # Arguments
@@ -1259,6 +1267,8 @@ mod tests {
         device.reset();
         assert_eq!(device.regions.len(), 7);
         assert_eq!(device.irqs.len(), 3);
+
+        device.pci_hot_reset();
 
         assert!(device.get_irq_info(3).is_none());
         let irq = device.get_irq_info(2).unwrap();
