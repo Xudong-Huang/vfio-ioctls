@@ -191,6 +191,11 @@ pub(crate) mod vfio_syscall {
         unsafe { ioctl(device, VFIO_DEVICE_RESET()) }
     }
 
+    pub(crate) fn pci_hot_reset(device: &VfioDevice) -> i32 {
+        // Safe as file is vfio device
+        unsafe { ioctl(device, VFIO_DEVICE_PCI_HOT_RESET()) }
+    }
+
     pub(crate) fn get_device_irq_info(
         dev_info: &VfioDeviceInfo,
         irq_info: &mut vfio_irq_info,
@@ -362,6 +367,10 @@ pub(crate) mod vfio_syscall {
     }
 
     pub(crate) fn reset(_device: &VfioDevice) -> i32 {
+        0
+    }
+
+    pub(crate) fn pci_hot_reset(_device: &VfioDevice) -> i32 {
         0
     }
 
