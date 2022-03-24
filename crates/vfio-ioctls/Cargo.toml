@@ -15,6 +15,7 @@ features = ["kvm"]
 [features]
 default = ["kvm"]
 noiommu = []
+vftoken = ["uuid"]
 kvm = ["kvm-ioctls", "kvm-bindings"]
 mshv = ["mshv-ioctls", "mshv-bindings"]
 
@@ -22,6 +23,7 @@ mshv = ["mshv-ioctls", "mshv-bindings"]
 byteorder = ">=1.2.1"
 libc = ">=0.2.39"
 log = "0.4"
+uuid = { version = ">=0.8.2", optional = true }
 kvm-bindings = { version = "~0", optional = true }
 kvm-ioctls = { version = "~0", optional = true }
 thiserror = ">=1.0"
