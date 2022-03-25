@@ -11,6 +11,7 @@ use std::fs::File;
 use std::mem::size_of;
 use std::os::unix::io::AsRawFd;
 
+use super::fam::*;
 use vfio_bindings::bindings::vfio::*;
 use vmm_sys_util::errno::Error as SysError;
 
@@ -191,34 +192,36 @@ pub(crate) mod vfio_syscall {
         unsafe { ioctl(device, VFIO_DEVICE_RESET()) }
     }
 
-    pub(crate) fn pci_hot_reset(device: &VfioDevice) -> i32 {
-        let mut reset_infos = vfio_pci_hot_reset_infos {
-            argsz: size_of::<vfio_pci_hot_reset_infos>() as u32,
-            ..Default::default()
-        };
+    pub(crate) fn pci_hot_reset(device: &VfioDevice, number: usize) -> i32 {
+        let mut hot_reset_infos =
+            vec_with_array_field::<vfio_pci_hot_reset_info, vfio_pci_dependent_device>(number);
+        hot_reset_infos.get_mut(0).unwrap().argsz = (size_of::<vfio_pci_hot_reset_info>()
+            + number * size_of::<vfio_pci_dependent_device>())
+            as u32;
         let ret = unsafe {
             ioctl_with_mut_ref(
                 device,
                 VFIO_DEVICE_GET_PCI_HOT_RESET_INFO(),
-                &mut reset_infos,
+                &mut hot_reset_infos,
             )
         };
         if ret < 0 {
             return ret;
         }
-        for index in 0..reset_infos.count {
-            let dev = reset_infos.devices[index as usize];
-            //println!("B(DF) - {:04X}:{:02X}:{:02X}/Group - {}", dev.segment, dev.bus, dev.devfn, dev.group_id);
-            if dev.group_id != device.group.id {
+        let hot_reset_info = hot_reset_infos.get(0).unwrap();
+        let devs = unsafe { hot_reset_info.devices.as_slice(number) };
+        for index in 0..hot_reset_info.count {
+            if devs[index as usize].group_id != device.group.id {
                 return -1;
             }
         }
-        let resets = vfio_pci_hot_resets {
-            argsz: size_of::<vfio_pci_hot_resets>() as u32,
-            count: 1,
-            fd: device.group.as_raw_fd(),
-            ..Default::default()
-        };
+
+        let mut resets = vec_with_array_field::<vfio_pci_hot_reset, __s32>(1);
+        let mut reset = resets.get_mut(0).unwrap();
+        reset.argsz = (size_of::<vfio_pci_hot_reset>() + size_of::<__s32>()) as u32;
+        reset.count = 1;
+        let rsts = unsafe { reset.group_fds.as_mut_slice(1) };
+        rsts[0] = device.group.as_raw_fd();
         unsafe { ioctl_with_ref(device, VFIO_DEVICE_PCI_HOT_RESET(), &resets) }
     }
 
@@ -393,7 +396,7 @@ pub(crate) mod vfio_syscall {
         0
     }
 
-    pub(crate) fn pci_hot_reset(_device: &VfioDevice) -> i32 {
+    pub(crate) fn pci_hot_reset(_device: &VfioDevice, _devnum: usize) -> i32 {
         0
     }
 

@@ -2258,28 +2258,3 @@ fn bindgen_test_layout_vfio_iommu_spapr_tce_remove() {
         )
     );
 }
-
-const DEV_NUM_MAX: usize = 64;
-#[repr(C)]
-#[derive(Debug)]
-pub struct vfio_pci_hot_reset_infos {
-    pub argsz: __u32,
-    pub flags: __u32,
-    pub count: __u32,
-    pub devices: [vfio_pci_dependent_device; DEV_NUM_MAX],
-}
-
-impl Default for vfio_pci_hot_reset_infos {
-    fn default() -> Self {
-        unsafe { ::std::mem::zeroed() }
-    }
-}
-
-#[repr(C)]
-#[derive(Debug, Default)]
-pub struct vfio_pci_hot_resets {
-    pub argsz: __u32,
-    pub flags: __u32,
-    pub count: __u32,
-    pub fd: i32,
-}
