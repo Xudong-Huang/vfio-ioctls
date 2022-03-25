@@ -192,8 +192,34 @@ pub(crate) mod vfio_syscall {
     }
 
     pub(crate) fn pci_hot_reset(device: &VfioDevice) -> i32 {
-        // Safe as file is vfio device
-        unsafe { ioctl(device, VFIO_DEVICE_PCI_HOT_RESET()) }
+        let mut reset_infos = vfio_pci_hot_reset_infos {
+            argsz: size_of::<vfio_pci_hot_reset_infos>() as u32,
+            ..Default::default()
+        };
+        let ret = unsafe {
+            ioctl_with_mut_ref(
+                device,
+                VFIO_DEVICE_GET_PCI_HOT_RESET_INFO(),
+                &mut reset_infos,
+            )
+        };
+        if ret < 0 {
+            return ret;
+        }
+        for index in 0..reset_infos.count {
+            let dev = reset_infos.devices[index as usize];
+            //println!("B(DF) - {:04X}:{:02X}:{:02X}/Group - {}", dev.segment, dev.bus, dev.devfn, dev.group_id);
+            if dev.group_id != device.group.id {
+                return -1;
+            }
+        }
+        let resets = vfio_pci_hot_resets {
+            argsz: size_of::<vfio_pci_hot_resets>() as u32,
+            count: 1,
+            fd: device.group.as_raw_fd(),
+            ..Default::default()
+        };
+        unsafe { ioctl_with_ref(device, VFIO_DEVICE_PCI_HOT_RESET(), &resets) }
     }
 
     pub(crate) fn get_device_irq_info(

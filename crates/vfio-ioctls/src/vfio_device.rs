@@ -422,20 +422,10 @@ impl VfioGroup {
         self.id
     }
 
-    fn get_device(
-        &self,
-        name: &Path,
-        #[cfg(feature = "vftoken")] vf_token: &uuid::Uuid,
-    ) -> Result<VfioDeviceInfo> {
+    fn get_device(&self, name: &Path) -> Result<VfioDeviceInfo> {
         let uuid_osstr = name.file_name().ok_or(VfioError::InvalidPath)?;
         let uuid_str = uuid_osstr.to_str().ok_or(VfioError::InvalidPath)?;
-        #[cfg(not(feature = "vftoken"))]
-        let path = CString::new(uuid_str.as_bytes()).expect("CString::new() failed");
-        #[cfg(feature = "vftoken")]
-        let path = {
-            let dev_path = format!("{} vf_token={}", uuid_str, vf_token);
-            CString::new(dev_path.as_bytes()).expect("CString::new() failed")
-        };
+        let path: CString = CString::new(uuid_str.as_bytes()).expect("CString::new() failed");
         let device = vfio_syscall::get_group_device_fd(self, &path)?;
 
         let mut dev_info = vfio_device_info {
@@ -762,17 +752,10 @@ impl VfioDevice {
     /// # Parameters
     /// * `sysfspath`: specify the vfio device path in sys file system.
     /// * `container`: the new VFIO device object will bind to this container object.
-    pub fn new(
-        sysfspath: &Path,
-        container: Arc<VfioContainer>,
-        #[cfg(feature = "vftoken")] vf_token: &uuid::Uuid,
-    ) -> Result<Self> {
+    pub fn new(sysfspath: &Path, container: Arc<VfioContainer>) -> Result<Self> {
         let group_id = Self::get_group_id_from_path(sysfspath)?;
         let group = container.get_group(group_id)?;
-        #[cfg(not(feature = "vftoken"))]
         let device_info = group.get_device(sysfspath)?;
-        #[cfg(feature = "vftoken")]
-        let device_info = group.get_device(sysfspath, vf_token)?;
         let regions = device_info.get_regions()?;
         let irqs = device_info.get_irqs()?;
 
@@ -795,7 +778,7 @@ impl VfioDevice {
 
     /// VFIO pci hot reset only if the device supports being reset.
     pub fn pci_hot_reset(&self) {
-        if vfio_syscall::pci_hot_reset(self) != 0 {
+        if self.flags & VFIO_DEVICE_FLAGS_RESET != 0 && vfio_syscall::pci_hot_reset(self) < 0 {
             let err = std::io::Error::last_os_error();
             error!("vfio pci hot reset failed. err={}", err);
         }
