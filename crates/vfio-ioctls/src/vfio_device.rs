@@ -95,6 +95,9 @@ impl VfioContainer {
             groups: Mutex::new(HashMap::new()),
         };
         container.check_api_version()?;
+        #[cfg(not(feature = "noiommu"))]
+        container.check_extension(VFIO_TYPE1v2_IOMMU)?;
+        #[cfg(feature = "noiommu")]
         container.check_extension(VFIO_NOIOMMU_IOMMU)?;
 
         Ok(container)
@@ -143,7 +146,12 @@ impl VfioContainer {
 
         // Initialize the IOMMU backend driver after binding the first group object.
         if hash.len() == 0 {
-            if let Err(e) = self.set_iommu(VFIO_NOIOMMU_IOMMU) {
+            #[cfg(not(feature = "noiommu"))]
+            let vfio_type = VFIO_TYPE1v2_IOMMU;
+            #[cfg(feature = "noiommu")]
+            let vfio_type = VFIO_NOIOMMU_IOMMU;
+
+            if let Err(e) = self.set_iommu(vfio_type) {
                 let _ = vfio_syscall::unset_group_container(&*group, self);
                 return Err(e);
             }
