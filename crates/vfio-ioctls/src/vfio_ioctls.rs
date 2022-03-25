@@ -14,6 +14,7 @@ use std::os::unix::io::AsRawFd;
 use vfio_bindings::bindings::vfio::*;
 use vmm_sys_util::errno::Error as SysError;
 
+use crate::fam::vec_with_array_field;
 use crate::vfio_device::{vfio_region_info_with_cap, VfioDeviceInfo};
 use crate::{Result, VfioContainer, VfioDevice, VfioError, VfioGroup};
 
@@ -192,8 +193,44 @@ pub(crate) mod vfio_syscall {
     }
 
     pub(crate) fn pci_hot_reset(device: &VfioDevice) -> i32 {
-        // Safe as file is vfio device
-        unsafe { ioctl(device, VFIO_DEVICE_PCI_HOT_RESET()) }
+        let mut number = 64;
+        for _ in 0..2 {
+            let mut hot_reset_infos =
+                vec_with_array_field::<vfio_pci_hot_reset_info, vfio_pci_dependent_device>(number);
+            hot_reset_infos.get_mut(0).unwrap().argsz = (size_of::<vfio_pci_hot_reset_info>()
+                + number * size_of::<vfio_pci_dependent_device>())
+                as u32;
+            let ret = unsafe {
+                ioctl_with_mut_ref(
+                    device,
+                    VFIO_DEVICE_GET_PCI_HOT_RESET_INFO(),
+                    &mut hot_reset_infos,
+                )
+            };
+            if ret < 0 {
+                return ret;
+            }
+            let hot_reset_info = hot_reset_infos.get(0).unwrap();
+            let count = hot_reset_info.count as usize;
+            if count > number {
+                number = count;
+                continue;
+            }
+            let devs = unsafe { hot_reset_info.devices.as_slice(count) };
+            for index in 0..hot_reset_info.count {
+                if devs[index as usize].group_id != device.group.id {
+                    return -1;
+                }
+            }
+        }
+
+        let mut resets = vec_with_array_field::<vfio_pci_hot_reset, __s32>(1);
+        let mut reset = resets.get_mut(0).unwrap();
+        reset.argsz = (size_of::<vfio_pci_hot_reset>() + size_of::<__s32>()) as u32;
+        reset.count = 1;
+        let rsts = unsafe { reset.group_fds.as_mut_slice(1) };
+        rsts[0] = device.group.as_raw_fd();
+        unsafe { ioctl_with_ref(device, VFIO_DEVICE_PCI_HOT_RESET(), &resets) }
     }
 
     pub(crate) fn get_device_irq_info(
