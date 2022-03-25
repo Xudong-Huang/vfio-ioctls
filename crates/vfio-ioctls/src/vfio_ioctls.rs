@@ -192,50 +192,45 @@ pub(crate) mod vfio_syscall {
         unsafe { ioctl(device, VFIO_DEVICE_RESET()) }
     }
 
-    fn get_device_count(
-        device: &VfioDevice,
-        hot_reset_infos: &mut Vec<vfio_pci_hot_reset_info>,
-        number: usize,
-    ) -> i32 {
+    pub(crate) fn pci_hot_reset(device: &VfioDevice) -> i32 {
+        // Get device number
+        let mut reset_info = vfio_pci_hot_reset_info {
+            argsz: size_of::<vfio_pci_hot_reset_info>() as u32,
+            ..Default::default()
+        };
+        let ret = unsafe {
+            ioctl_with_mut_ref(
+                device,
+                VFIO_DEVICE_GET_PCI_HOT_RESET_INFO(),
+                &mut reset_info,
+            )
+        };
+        if ret < 0 {
+            return ret;
+        }
+
+        // Use the number
+        let count = reset_info.count as usize;
+        let mut hot_reset_infos =
+            vec_with_array_field::<vfio_pci_hot_reset_info, vfio_pci_dependent_device>(count);
         hot_reset_infos.get_mut(0).unwrap().argsz = (size_of::<vfio_pci_hot_reset_info>()
-            + number * size_of::<vfio_pci_dependent_device>())
+            + count * size_of::<vfio_pci_dependent_device>())
             as u32;
         let ret = unsafe {
             ioctl_with_mut_ref(
                 device,
                 VFIO_DEVICE_GET_PCI_HOT_RESET_INFO(),
-                hot_reset_infos,
+                &mut hot_reset_infos,
             )
         };
         if ret < 0 {
             return ret;
         }
         let hot_reset_info = hot_reset_infos.get(0).unwrap();
-        hot_reset_info.count as i32
-    }
-
-    pub(crate) fn pci_hot_reset(device: &VfioDevice) -> i32 {
-        // Get device number
-        let mut hot_reset_infos =
-            vec_with_array_field::<vfio_pci_hot_reset_info, vfio_pci_dependent_device>(0);
-        let count = get_device_count(device, &mut hot_reset_infos, 0);
-        if count < 0 {
-            return count;
-        }
-
-        // Use the number
-        let mut hot_reset_infos = vec_with_array_field::<
-            vfio_pci_hot_reset_info,
-            vfio_pci_dependent_device,
-        >(count as usize);
-        let number = get_device_count(device, &mut hot_reset_infos, count as usize);
-        if number < 0 {
-            return number;
-        }
+        let number = hot_reset_info.count as usize;
         assert_eq!(count, number);
 
-        let hot_reset_info = hot_reset_infos.get(0).unwrap();
-        let devs = unsafe { hot_reset_info.devices.as_slice(count as usize) };
+        let devs = unsafe { hot_reset_info.devices.as_slice(count) };
         for index in 0..count {
             if devs[index as usize].group_id != device.group.id {
                 return -1;
