@@ -217,7 +217,7 @@ pub(crate) mod vfio_syscall {
                 continue;
             }
             let devs = unsafe { hot_reset_info.devices.as_slice(count) };
-            for index in 0..hot_reset_info.count {
+            for index in 0..count {
                 if devs[index as usize].group_id != device.group.id {
                     return -1;
                 }
