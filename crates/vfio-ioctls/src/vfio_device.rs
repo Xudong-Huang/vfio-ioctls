@@ -168,6 +168,7 @@ pub struct VfioContainer {
     #[allow(dead_code)]
     pub(crate) device_fd: Option<VfioContainerDeviceHandle>,
     pub(crate) groups: Mutex<HashMap<u32, Arc<VfioGroup>>>,
+    is_iommu: bool,
 }
 
 impl VfioContainer {
@@ -182,16 +183,19 @@ impl VfioContainer {
             .open("/dev/vfio/vfio")
             .map_err(VfioError::OpenContainer)?;
 
-        let container = VfioContainer {
+        let mut container = VfioContainer {
             container,
             device_fd,
             groups: Mutex::new(HashMap::new()),
+            is_iommu: false,
         };
         container.check_api_version()?;
-        #[cfg(not(feature = "noiommu"))]
-        container.check_extension(VFIO_TYPE1v2_IOMMU)?;
-        #[cfg(feature = "noiommu")]
-        container.check_extension(VFIO_NOIOMMU_IOMMU)?;
+        // we prefer to use no-iommu version, no-iommu is only available
+        // when we enable /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
+        if container.check_extension(VFIO_NOIOMMU_IOMMU).is_err() {
+            container.check_extension(VFIO_TYPE1v2_IOMMU)?;
+            container.is_iommu = true;
+        }
 
         Ok(container)
     }
@@ -239,13 +243,14 @@ impl VfioContainer {
 
         // Initialize the IOMMU backend driver after binding the first group object.
         if hash.len() == 0 {
-            #[cfg(not(feature = "noiommu"))]
-            let vfio_type = VFIO_TYPE1v2_IOMMU;
-            #[cfg(feature = "noiommu")]
-            let vfio_type = VFIO_NOIOMMU_IOMMU;
+            let vfio_type = if self.is_iommu {
+                VFIO_TYPE1v2_IOMMU
+            } else {
+                VFIO_NOIOMMU_IOMMU
+            };
 
             if let Err(e) = self.set_iommu(vfio_type) {
-                let _ = vfio_syscall::unset_group_container(&*group, self);
+                let _ = vfio_syscall::unset_group_container(&group, self);
                 return Err(e);
             }
         }
@@ -286,6 +291,11 @@ impl VfioContainer {
             }
             hash.remove(&group.id());
         }
+    }
+
+    /// check if we support iommu, or we would use the no-iommu version driver
+    pub fn is_iommu(&self) -> bool {
+        self.is_iommu
     }
 
     /// Map a region of guest memory regions into the vfio container's iommu table.
@@ -463,18 +473,19 @@ pub struct VfioGroup {
 impl VfioGroup {
     #[cfg(not(test))]
     fn open_group_file(id: u32) -> Result<File> {
-        #[cfg(not(feature = "noiommu"))]
-        let id = id.to_string();
+        let mut group_file = PathBuf::from("/dev/vfio");
+        group_file.push(format!("{}", id));
+        if !group_file.exists() {
+            // try again with the no-iommu version vfio
+            group_file = PathBuf::from("/dev/vfio");
+            group_file.push(format!("noiommu-{}", id));
+        };
 
-        #[cfg(feature = "noiommu")]
-        let id = String::from("noiommu-") + &id.to_string();
-
-        let group_path = Path::new("/dev/vfio").join(&id);
         OpenOptions::new()
             .read(true)
             .write(true)
-            .open(&group_path)
-            .map_err(|e| VfioError::OpenGroup(e, id))
+            .open(&group_file)
+            .map_err(|e| VfioError::OpenGroup(e, group_file.to_string_lossy().to_string()))
     }
 
     /// Create a new VfioGroup object.
