@@ -14,7 +14,6 @@ features = ["kvm"]
 
 [features]
 default = ["kvm"]
-noiommu = []
 vftoken = ["uuid"]
 kvm = ["kvm-ioctls", "kvm-bindings"]
 mshv = ["mshv-ioctls", "mshv-bindings"]

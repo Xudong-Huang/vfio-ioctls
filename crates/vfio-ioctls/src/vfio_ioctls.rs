@@ -14,6 +14,7 @@ use std::os::unix::io::AsRawFd;
 use vfio_bindings::bindings::vfio::*;
 use vmm_sys_util::errno::Error as SysError;
 
+#[cfg(not(test))]
 use crate::fam::vec_with_array_field;
 use crate::vfio_device::{vfio_region_info_with_cap, VfioDeviceInfo};
 use crate::{Result, VfioContainer, VfioDevice, VfioError, VfioGroup};
@@ -230,9 +231,9 @@ pub(crate) mod vfio_syscall {
         let number = hot_reset_info.count as usize;
         assert_eq!(count, number);
 
-        let devs = unsafe { hot_reset_info.devices.as_slice(count) };
+        let devices = unsafe { hot_reset_info.devices.as_slice(count) };
         for index in 0..count {
-            if devs[index as usize].group_id != device.group.id {
+            if devices[index as usize].group_id != device.group.id {
                 return -1;
             }
         }
@@ -241,8 +242,8 @@ pub(crate) mod vfio_syscall {
         let mut reset = resets.get_mut(0).unwrap();
         reset.argsz = (size_of::<vfio_pci_hot_reset>() + size_of::<__s32>()) as u32;
         reset.count = 1;
-        let rsts = unsafe { reset.group_fds.as_mut_slice(1) };
-        rsts[0] = device.group.as_raw_fd();
+        let group_fds = unsafe { reset.group_fds.as_mut_slice(1) };
+        group_fds[0] = device.group.as_raw_fd();
         unsafe { ioctl_with_ref(device, VFIO_DEVICE_PCI_HOT_RESET(), &resets) }
     }
 
