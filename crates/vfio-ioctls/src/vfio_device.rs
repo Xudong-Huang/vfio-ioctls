@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use byteorder::{ByteOrder, LittleEndian};
-use log::{debug, error, warn};
+use log::{debug, error, warn, trace};
 use vfio_bindings::bindings::vfio::*;
 use vm_memory::{Address, GuestMemory, GuestMemoryRegion, MemoryRegionAddress};
 use vmm_sys_util::eventfd::EventFd;
@@ -286,7 +286,7 @@ impl VfioContainer {
                 }
             }
             if vfio_syscall::unset_group_container(&group, self).is_err() {
-                error!("Could not unbind VFIO group: {:?}", group.id());
+                trace!("error: Could not unbind VFIO group: {:?}", group.id());
                 return;
             }
             hash.remove(&group.id());
