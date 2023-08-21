@@ -15,6 +15,7 @@ features = ["vfio-v5_0_0", "fam-wrappers"]
 [features]
 vfio-v5_0_0 = []
 fam-wrappers = ["vmm-sys-util"]
+iommu_pasid = []
 
 [dependencies]
 vmm-sys-util = { version = "0.11.0", optional = true }

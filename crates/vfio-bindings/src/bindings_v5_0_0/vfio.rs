@@ -1497,6 +1497,30 @@ fn bindgen_test_layout_vfio_device_ioeventfd() {
         )
     );
 }
+
+#[cfg(feature = "iommu_pasid")]
+#[doc = " VFIO_DEVICE_BIND_PASID - _IOW(VFIO_TYPE, VFIO_BASE + 18,"]
+#[doc = "                              struct vfio_device_bind_pasid)"]
+#[doc = ""]
+#[doc = " Return: 0 on success, -errno on failure."]
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct vfio_device_bind_pasid {
+    pub argsz: __u32,
+    pub pasid: __u32,
+}
+#[cfg(feature = "iommu_pasid")]
+#[doc = " VFIO_DEVICE_UNBIND_PASID - _IOW(VFIO_TYPE, VFIO_BASE + 19,"]
+#[doc = "                              struct vfio_device_unbind_pasid)"]
+#[doc = ""]
+#[doc = " Return: 0 on success, -errno on failure."]
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct vfio_device_unbind_pasid {
+    pub argsz: __u32,
+    pub pasid: __u32,
+}
+
 #[doc = " VFIO_IOMMU_GET_INFO - _IOR(VFIO_TYPE, VFIO_BASE + 12, struct vfio_iommu_info)"]
 #[doc = ""]
 #[doc = " Retrieve information about the IOMMU object. Fills in provided"]

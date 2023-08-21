@@ -1261,6 +1261,17 @@ impl VfioDevice {
 
         max_interrupts
     }
+
+    #[cfg(feature = "iommu_pasid")]
+    /// Bind pasid to current process
+    pub fn bind_pasid(&self, pasid: u32) -> Result<()> {
+        vfio_syscall::bind_pasid(self, pasid)
+    }
+    #[cfg(feature = "iommu_pasid")]
+    /// Unbind pasid to current process
+    pub fn unbind_pasid(&self, pasid: u32) -> Result<()> {
+        vfio_syscall::unbind_pasid(self, pasid)
+    }
 }
 
 impl AsRawFd for VfioDevice {

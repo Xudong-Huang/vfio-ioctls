@@ -40,6 +40,10 @@ ioctl_io_nr!(VFIO_DEVICE_PCI_HOT_RESET, VFIO_TYPE, VFIO_BASE + 13);
 ioctl_io_nr!(VFIO_DEVICE_QUERY_GFX_PLANE, VFIO_TYPE, VFIO_BASE + 14);
 ioctl_io_nr!(VFIO_DEVICE_GET_GFX_DMABUF, VFIO_TYPE, VFIO_BASE + 15);
 ioctl_io_nr!(VFIO_DEVICE_IOEVENTFD, VFIO_TYPE, VFIO_BASE + 16);
+#[cfg(feature = "iommu_pasid")]
+ioctl_io_nr!(VFIO_DEVICE_BIND_PASID, VFIO_TYPE, VFIO_BASE + 18);
+#[cfg(feature = "iommu_pasid")]
+ioctl_io_nr!(VFIO_DEVICE_UNBIND_PASID, VFIO_TYPE, VFIO_BASE + 19);
 ioctl_io_nr!(VFIO_IOMMU_GET_INFO, VFIO_TYPE, VFIO_BASE + 12);
 ioctl_io_nr!(VFIO_IOMMU_MAP_DMA, VFIO_TYPE, VFIO_BASE + 13);
 ioctl_io_nr!(VFIO_IOMMU_UNMAP_DMA, VFIO_TYPE, VFIO_BASE + 14);
@@ -245,6 +249,36 @@ pub(crate) mod vfio_syscall {
         let group_fds = unsafe { reset.group_fds.as_mut_slice(1) };
         group_fds[0] = device.group.as_raw_fd();
         unsafe { ioctl_with_ref(device, VFIO_DEVICE_PCI_HOT_RESET(), &resets) }
+    }
+
+    #[cfg(feature = "iommu_pasid")]
+    pub(crate) fn bind_pasid(device: &VfioDevice, pasid: u32) -> Result<()> {
+        let bind_pasid = vfio_device_bind_pasid {
+            argsz: size_of::<vfio_device_bind_pasid>() as u32,
+            pasid,
+        };
+
+        let ret = unsafe { ioctl_with_ref(device, VFIO_DEVICE_BIND_PASID(), &bind_pasid) };
+        if ret < 0 {
+            Err(VfioError::VfioDeviceBindPasid)
+        } else {
+            Ok(())
+        }
+    }
+
+    #[cfg(feature = "iommu_pasid")]
+    pub(crate) fn unbind_pasid(device: &VfioDevice, pasid: u32) -> Result<()> {
+        let unbind_pasid = vfio_device_unbind_pasid {
+            argsz: size_of::<vfio_device_unbind_pasid>() as u32,
+            pasid,
+        };
+
+        let ret = unsafe { ioctl_with_ref(device, VFIO_DEVICE_UNBIND_PASID(), &unbind_pasid) };
+        if ret < 0 {
+            Err(VfioError::VfioDeviceUnbindPasid)
+        } else {
+            Ok(())
+        }
     }
 
     pub(crate) fn get_device_irq_info(
