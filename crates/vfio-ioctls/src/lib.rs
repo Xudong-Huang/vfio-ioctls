@@ -109,6 +109,12 @@ pub enum VfioError {
     VfioDeviceGetInfoOther,
     #[error("failed to get vfio device's region info: {0}")]
     VfioDeviceGetRegionInfo(#[source] SysError),
+    #[cfg(feature = "iommu_pasid")]
+    #[error("failed to bind pasid for vfio device")]
+    VfioDeviceBindPasid,
+    #[cfg(feature = "iommu_pasid")]
+    #[error("failed to unbind pasid for vfio device")]
+    VfioDeviceUnbindPasid,
     #[error("invalid file path")]
     InvalidPath,
     #[error("failed to add guest memory map into iommu table: {0}")]

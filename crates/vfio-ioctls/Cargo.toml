@@ -17,6 +17,7 @@ default = ["kvm"]
 vftoken = ["uuid"]
 kvm = ["kvm-ioctls", "kvm-bindings"]
 mshv = ["mshv-ioctls", "mshv-bindings"]
+iommu_pasid = []
 
 [dependencies]
 byteorder = "1.2.1"
